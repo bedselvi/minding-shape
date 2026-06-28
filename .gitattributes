@@ -1,0 +1,2 @@
+# Satır sonlarını normalize et — çok cihazlı kullanımda tutarlılık için.
+* text=auto eol=lf

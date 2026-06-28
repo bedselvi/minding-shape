@@ -1,0 +1,26 @@
+# Bağımlılıklar
+node_modules/
+
+# Sırlar — ASLA commit edilmez
+.env
+
+# Build çıktısı
+dist/
+*.tsbuildinfo
+
+# ── KİŞİSEL BEYİN İÇERİĞİ — ASLA commit edilmez ──
+# Gerçek knowledge base dosyaları kişisel veridir; repoda durmaz.
+knowledge/**/*.md
+knowledge/index.md
+
+# ...ama klasör iskeleti ve şablonlar korunur:
+!knowledge/**/*.example.md
+!knowledge/**/.gitkeep
+
+# Claude Code yerel makine ayarları (kişisel izinler) — paylaşılmaz
+.claude/settings.local.json
+
+# OS / editör
+.DS_Store
+Thumbs.db
+.vscode/

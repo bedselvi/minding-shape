@@ -1,0 +1,25 @@
+{
+  "name": "khan",
+  "version": "0.1.0",
+  "description": "Khan — kişisel CLI asistan. Markdown knowledge base üzerinden çalışan, Claude Code (claude -p) tabanlı bir wrapper.",
+  "type": "module",
+  "bin": {
+    "agent": "./dist/cli.js"
+  },
+  "scripts": {
+    "agent": "tsx cli.ts",
+    "onboard": "tsx cli.ts onboard",
+    "build-index": "tsx scripts/build-index.ts",
+    "build": "tsc",
+    "dev": "tsx watch cli.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
