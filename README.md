@@ -5,8 +5,8 @@ kullanılan bir asistandır. "Beyin" olarak Claude'u, **Claude Code (`claude -p`
 üzerinden kullanır — yani Claude Pro/Max aboneliğinle çalışır, ayrı API kredisi
 gerektirmez.
 
-> Detaylı tasarım için bkz. [`personal-agent-spec.md`](personal-agent-spec.md) ve
-> alınan kararlar için [`KURULUM-KARARLARI.md`](KURULUM-KARARLARI.md).
+> Detaylı tasarım, alınan kararlar ve dosya yapısı için tek kaynak:
+> [`personal-agent-spec.md`](personal-agent-spec.md).
 
 ## Mimari (kısaca)
 

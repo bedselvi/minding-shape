@@ -1,8 +1,17 @@
-# Personal Agent — Proje Spesifikasyonu
+# Personal Agent (Khan) — Proje Spesifikasyonu
 
-Bu dosyayı Claude Code'a ver ve "bu spec'e göre projeyi kur" de. Claude Code dosya
-yapısını, scriptleri, MCP bağlantılarını ve onboarding akışını bu spec'e göre
-oluşturacak.
+Bu, projenin **tek otoriter dokümanıdır**: hem tasarımı hem mevcut implementasyonu
+yansıtır. Sistemi sıfırdan kurmak için Bölüm 12'deki talimat verilebilir.
+
+## Kurulum Durumu (2026-06-28)
+- ✅ **Faz 1 motoru kurulu ve test edildi**: beyin (`core/agent.ts`), CLI (`cli.ts`),
+  onboarding (`core/onboarding.ts`), index üreticisi (`scripts/build-index.ts`),
+  Khan system prompt (`prompts/khan-system.md`). **Claude Pro aboneliğiyle** (`claude -p`)
+  çalışıyor — ham API kredisi kullanmaz (bkz. Bölüm 8 Çalışma Kanalı).
+- ⏳ **Yapılacak**: Google Calendar MCP entegrasyonu (`core/calendar.ts` + OAuth
+  kurulum yönlendirmesi — Bölüm 7).
+- Repo: `github.com/bedselvi/minding-shape` — temiz motor; kişisel veri (`knowledge/`)
+  gitignore'lu, repoya gitmez (bkz. Bölüm 8 Repo Stratejisi).
 
 ## 1. Amaç
 
@@ -161,8 +170,8 @@ etmeli miyim" kararını vermesine yardımcı olur.
 `volatility` bilgisinin otomatik derlendiği bir özet dosya. Agent her sorguda
 önce bunu okur (küçük, ~1-2k token), sonra sorguya göre hangi dosyalara
 gideceğine karar verir. Bu dosya elle değil, script ile otomatik üretilir
-(`scripts/build_index.py` gibi) — her knowledge base güncellemesinde yeniden
-derlenir.
+(`scripts/build-index.ts`) — her knowledge base güncellemesinde (ve onboarding/
+sorgu sonrası otomatik) yeniden derlenir. `index.md` gitignore'ludur (üretilen, kişisel).
 
 ## 5. Sorgu Akışı (Query Flow)
 
@@ -222,77 +231,113 @@ work` gibi, sadece tek bir bölümü yeniden sormak için).
 - Sorgu akışında calendar'dan "bugün", "bu hafta", "yaklaşan N gün" gibi
   dar aralıklarla veri çekilsin — tüm takvimi taramak yok.
 
-## 8. Teknik Tercihler (Claude Code karar verebilir, ama yönlendirme)
+## 8. Teknik Tercihler & Çalışma Kanalı
 
-- Dil: Python ya da Node — Claude Code projenin ihtiyacına göre seçebilir,
-  ama MCP client tarafı için Node ekosistemi daha olgun olduğundan TypeScript/
-  Node tercih edilebilir.
-- Local çalışacak, herhangi bir cloud deploy YOK.
-- Veritabanı YOK — her şey düz `.md` dosyası (git ile versiyonlanabilir,
-  okunabilir, elle düzenlenebilir).
-- BM25 gibi basit bir local arama (vektör DB / embedding YOK, gereksiz
-  complexity) index dosyası + dosya seçimiyle zaten çözülüyor; eğer ileride
-  dosya sayısı çok artarsa basit bir keyword-match yardımcı script
-  eklenebilir, ama başta gerek yok.
-- `.env` içinde API key'ler, `.gitignore`'a eklensin.
+### Dil / Teknoloji
+- **Node / TypeScript** (kesinleşti) — MCP client ekosistemi Node'da daha olgun.
+- `tsx` ile çalışır (zorunlu derleme yok). Komutlar `npm run ...` üzerinden.
 
-## 9. Proje Dosya Yapısı (Faz 1)
+### Çalışma kanalı — abonelik (KRİTİK)
+- Agent'ın "beyni" ham Anthropic API'yi **DEĞİL**, **Claude Code'u (`claude -p`)** çağırır.
+- **Neden:** kullanıcı **Claude Pro/Max aboneliği** kullanıyor. Ham API
+  (`@anthropic-ai/sdk`) aboneliğe dahil değildir, ayrı kredi ister → sürpriz fatura.
+  `claude -p` wrapper'ı aboneliği kullanır, **ekstra ücret yoktur.**
+- **Teknik:** `core/agent.ts`, `claude` launcher'ının çağırdığı `cli.js`'i bulup
+  `node cli.js -p <soru> --append-system-prompt <khan-prompt> --model <model>
+  --permission-mode acceptEdits` olarak çalıştırır (Windows `.cmd` ve arg kaçış
+  sorunlarını atlar).
+- **`--bare` KULLANILMAZ** — o mod sadece `ANTHROPIC_API_KEY` ile çalışır, abonelik
+  (OAuth) auth'unu okumaz.
+- (Alternatif: ileride daha fazla programatik kontrol gerekirse Claude Agent SDK;
+  o da abonelik auth'unu kullanır.)
+
+### Model
+- Varsayılan: hızlı model (Sonnet/Haiku); `KHAN_MODEL` env ile ayarlanır.
+- Opus sadece açıkça istenince (`agent --opus "..."`).
+- Abonelikte token başına ödeme yok; model seçimi *maliyet* değil *hız / kullanım-limiti* meselesi.
+
+### Repo, Gizlilik & Paylaşım Stratejisi (paylaşım için kritik)
+- Repo **temiz motoru** tutar; **kişisel veri içermez** — başkasına olduğu gibi verilebilir.
+- `knowledge/**/*.md` ve `knowledge/index.md` **gitignore'lu** → kullanıcının verisi
+  asla commit edilmez (yanlışlıkla bile — yapısal garanti).
+- Repoda sadece `.example.md` şablonları + klasör iskeleti (`.gitkeep`) izlenir.
+- `.env` (sırlar) ve `.claude/settings.local.json` (yerel ayarlar) da gitignore'lu.
+- **Başkasına verme:** klonla → `npm install` → `npm run onboard` (kendi beynini doldurur).
+- **Kendi beynini başka cihaza taşıma:** `knowledge/` klasörünü manuel yedekle/kopyala
+  (zip / iCloud / ayrı private repo) — bu repoya push DEĞİL.
+
+### Diğer
+- Tamamen **local**, cloud deploy YOK.
+- **Veritabanı YOK** — her şey düz `.md` (git ile versiyonlanabilir, elle düzenlenebilir).
+- **Vektör DB / embedding YOK** — index dosyası + dosya seçimi yeterli. Dosya sayısı
+  çok artarsa basit bir keyword-match script eklenebilir; başta gerek yok.
+
+## 9. Proje Dosya Yapısı (Faz 1 — kurulu)
 
 ```
-personal-agent/
-├── knowledge/                  # Bölüm 3'teki yapı
-│   ├── index.md
-│   ├── core/
-│   ├── life/
-│   ├── work/
-│   ├── travel/
-│   ├── tasks/
-│   └── log/
+minding-shape/                  # repo (app adı: Khan)
+├── knowledge/                  # Bölüm 3'teki yapı — GERÇEK .md DOSYALARI GITIGNORE'LU
+│   ├── index.md                # üretilir (gitignore)
+│   ├── *.example.md            # her dosya için şablon (repoda izlenir)
+│   ├── core/  life/  work/  travel/  tasks/  log/
+├── prompts/
+│   ├── khan-system.md          # Khan persona + query flow (system prompt)
+│   └── khan-onboarding.md      # onboarding röportaj talimatı
 ├── core/
-│   ├── agent.ts (veya .py)     # "Beyin": sorgu akışı, dosya seçimi,
-│   │                            # knowledge base okuma/yazma fonksiyonları.
-│   │                            # Faz 2'de WhatsApp handler'ı da bu modülü
-│   │                            # çağıracak şekilde tasarlanmalı.
-│   ├── onboarding.ts (veya .py)
-│   └── calendar.ts (veya .py)  # Google Calendar MCP wrapper
-├── cli.ts (veya .py)           # Terminal giriş noktası
+│   ├── agent.ts                # "Beyin": spawnClaude / runQuery (claude -p wrapper).
+│   │                           # Faz 2/3'te WhatsApp/Siri handler'ı da bunu çağıracak.
+│   ├── onboarding.ts           # interaktif kurulum (Claude-yönetimli röportaj)
+│   └── calendar.ts             # Google Calendar MCP wrapper  ⏳ YAPILACAK
+├── cli.ts                      # Terminal giriş noktası (query / onboard / build-index / consolidate)
 ├── scripts/
-│   └── build_index.ts          # index.md'yi knowledge/ içeriğinden üretir
-├── .claude/
-│   └── (MCP config, varsa Claude Code'un kendi ayarları)
-├── .env.example
-├── .gitignore
-├── package.json (veya requirements.txt)
-└── README.md                   # Kurulum + günlük kullanım talimatları
+│   └── build-index.ts          # index.md'yi knowledge/ frontmatter'ından üretir
+├── .claude/                    # Claude Code ayarları (settings.local.json gitignore)
+├── .env.example                # şablon (.env gitignore — abonelikte anahtar gerekmez)
+├── .gitignore  .gitattributes
+├── package.json  package-lock.json  tsconfig.json
+└── README.md                   # Kurulum + günlük kullanım
 ```
 
-## 10. Günlük Kullanım (hedeflenen deneyim)
+> **Not:** `knowledge/` altındaki gerçek `.md` dosyaları ve `index.md` gitignore'ludur;
+> repoda sadece `.example.md` şablonları ve `.gitkeep`'ler durur (bkz. Bölüm 8 Repo Stratejisi).
+
+## 10. Günlük Kullanım
 
 ```bash
-agent "bugün ne var"
-agent "X projesinin son durumu ne"
-agent "yarın saat 14'te diş hekimi randevum var, not al"
-agent onboard            # ilk kurulum / knowledge base'i sıfırdan oluşturma
-agent onboard --section work   # sadece bir bölümü yeniden doldurma
+npm run agent -- "bugün ne var"
+npm run agent -- "X projesinin son durumu ne"
+npm run agent -- "yarın 14:00 diş hekimi randevum var, not al"
+npm run agent -- --opus "şu kararı derinlemesine analiz et"   # Opus modeli
+npm run onboard                       # knowledge base'i interaktif doldur
+npm run onboard -- --section work     # sadece bir bölümü yeniden doldur
+npm run build-index                   # index.md'yi yeniden üret
+npm run agent -- consolidate          # log/ ham notlarını core dosyalara terfi et
 ```
 
-`agent` komutu basitçe Claude Code'u önceden tanımlı bir system prompt +
-yukarıdaki query flow ile çalıştıran bir wrapper olsun (ya `claude` CLI'ı
-`-p` / non-interactive modda çağırarak, ya da Claude Agent SDK kullanarak —
-Claude Code hangisinin bu use-case için daha uygun olduğuna kendi karar
-versin).
+`agent` komutu, Claude Code'u (`claude -p`) önceden tanımlı **Khan system prompt**
+(`prompts/khan-system.md`) + Bölüm 5 query flow ile çalıştıran ince bir wrapper'dır
+(bkz. Bölüm 8 Çalışma Kanalı). İleride global `agent` komutu için `npm link` kullanılabilir.
+
+**`agent consolidate`** (manuel, haftalık çalıştırılabilir): `log/YYYY-MM.md`'deki ham
+notları ilgili core/life/work dosyalarına terfi ettirir, taşınanları log'dan temizler,
+index'i günceller ve kısaca raporlar. Otomatik arka plan döngüsü DEĞİL (bkz. Bölüm 11).
 
 ## 11. Yapılmaması Gerekenler
 
-- Karmaşık hook sistemi, sleep/consolidation cycle, multi-agent council gibi
-  dreamcontext'teki ileri seviye mekanizmalar — bunlara gerek yok.
+- Karmaşık hook sistemi, **otomatik/arka plan** sleep/consolidation cycle,
+  multi-agent council gibi dreamcontext'teki ileri seviye mekanizmalar — bunlara gerek yok.
+  (NOT: **manuel** `agent consolidate` komutu DAHİLDİR — bu bir arka plan döngüsü değil,
+  kullanıcının elle tetiklediği tek seferlik terfi işlemidir; boşuna kredi/kullanım yakmaz.)
 - Vektör veritabanı / embedding pipeline'ı kurmaya gerek yok.
 - Sağlık verisiyle ilgili otomatik çıkarım/tavsiye agent'ın işi değil; sadece
   kullanıcının açıkça yazdığını not alır.
 - Faz 1'de WhatsApp/mobil entegrasyonuna hiç dokunulmayacak — sadece mimari
   buna izin verecek şekilde (agent mantığı CLI'dan ayrık) kurulacak.
 
-## 12. Claude Code'a Talimat (bu spec'i verirken ekle)
+## 12. Claude Code'a Talimat (sıfırdan kurmak / başkasına vermek için)
+
+> Faz 1 motoru zaten kurulu (bkz. Kurulum Durumu). Aşağıdaki talimat, sistemi
+> **sıfırdan yeniden kurmak** ya da temiz haliyle başka birine vermek için referanstır.
 
 > Bu spec'i oku ve bu yapıya göre projeyi sıfırdan kur. Önce dosya/klasör
 > iskeletini oluştur, sonra "beyin" modülünü (core/agent.*) yaz, sonra
